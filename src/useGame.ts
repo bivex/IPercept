@@ -84,15 +84,28 @@ export function useGame() {
     ]);
   }, [photo, guess, revealed]);
 
-  const skip = useCallback(() => {
+  const skip = useCallback(async () => {
     if (!photo || revealed) return;
-    setRevealed(true);
     setTotal(t => t + 1);
     setHistory(h => [
       ...h,
       { photo, userGuess: '(skipped)', revealed: true, correct: false },
     ]);
-  }, [photo, revealed]);
+    setRevealed(true);
+    setCorrect(false);
+    setGuess('');
+    const seenIds = new Set([...history.map(r => r.photo.id), photo.id]);
+    setLoading(true);
+    try {
+      const p = await fetchRandomPhoto(source, lang, seenIds);
+      setPhoto(p);
+      setRevealed(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch photo');
+    } finally {
+      setLoading(false);
+    }
+  }, [photo, revealed, history, source, lang]);
 
   return {
     source, changeSource,
