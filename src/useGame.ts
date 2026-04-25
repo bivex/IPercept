@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import type { Photo, GameRound } from './types';
-import { fetchRandomPhoto, LANGUAGES } from './api';
+import { fetchRandomPhoto, LANGUAGES, type Source } from './api';
 
-function checkGuess(guess: string, answer: string): boolean {
+function checkGuess(guess: string, answer: string, tags: string[]): boolean {
   const normalize = (s: string) =>
     s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').trim();
   const g = normalize(guess);
@@ -11,13 +11,23 @@ function checkGuess(guess: string, answer: string): boolean {
   if (!g) return false;
   if (g === a) return true;
 
-  const answerWords = a.split(/\s+/);
   const guessWords = g.split(/\s+/);
+
+  // For tagged photos (Unsplash), match any tag word in guess
+  if (tags.length > 0) {
+    const tagWords = tags.flatMap(t => normalize(t).split(/\s+/)).filter(Boolean);
+    const matchedTags = tagWords.filter(tw => guessWords.includes(tw));
+    if (matchedTags.length >= 1) return true;
+  }
+
+  // For Wikipedia-style titles, word overlap
+  const answerWords = a.split(/\s+/);
   const overlap = answerWords.filter(w => guessWords.includes(w));
   return overlap.length >= Math.ceil(answerWords.length * 0.5);
 }
 
 export function useGame() {
+  const [source, setSource] = useState<Source>('wikipedia');
   const [lang, setLang] = useState(LANGUAGES[0].code);
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [guess, setGuess] = useState('');
@@ -36,14 +46,21 @@ export function useGame() {
     setCorrect(false);
     setGuess('');
     try {
-      const p = await fetchRandomPhoto(lang);
+      const p = await fetchRandomPhoto(source, lang);
       setPhoto(p);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch photo');
     } finally {
       setLoading(false);
     }
-  }, [lang]);
+  }, [source, lang]);
+
+  const changeSource = useCallback((s: Source) => {
+    setSource(s);
+    setScore(0);
+    setTotal(0);
+    setHistory([]);
+  }, []);
 
   const changeLang = useCallback((newLang: string) => {
     setLang(newLang);
@@ -54,7 +71,7 @@ export function useGame() {
 
   const submitGuess = useCallback(() => {
     if (!photo || revealed) return;
-    const isCorrect = checkGuess(guess, photo.title);
+    const isCorrect = checkGuess(guess, photo.title, photo.tags);
     setCorrect(isCorrect);
     setRevealed(true);
     setTotal(t => t + 1);
@@ -76,6 +93,7 @@ export function useGame() {
   }, [photo, revealed]);
 
   return {
+    source, changeSource,
     lang, changeLang,
     photo, guess, setGuess, revealed, correct,
     score, total, loading, error, history,

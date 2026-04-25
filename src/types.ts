@@ -3,6 +3,8 @@ export interface Photo {
   imageUrl: string;
   title: string;
   description: string;
+  tags: string[];
+  source: 'wikipedia' | 'unsplash';
 }
 
 export interface GameRound {
