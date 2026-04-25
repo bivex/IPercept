@@ -1,0 +1,84 @@
+import { useState, useCallback } from 'react';
+import type { Photo, GameRound } from './types';
+import { fetchRandomPhoto, LANGUAGES } from './api';
+
+function checkGuess(guess: string, answer: string): boolean {
+  const normalize = (s: string) =>
+    s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').trim();
+  const g = normalize(guess);
+  const a = normalize(answer);
+
+  if (!g) return false;
+  if (g === a) return true;
+
+  const answerWords = a.split(/\s+/);
+  const guessWords = g.split(/\s+/);
+  const overlap = answerWords.filter(w => guessWords.includes(w));
+  return overlap.length >= Math.ceil(answerWords.length * 0.5);
+}
+
+export function useGame() {
+  const [lang, setLang] = useState(LANGUAGES[0].code);
+  const [photo, setPhoto] = useState<Photo | null>(null);
+  const [guess, setGuess] = useState('');
+  const [revealed, setRevealed] = useState(false);
+  const [correct, setCorrect] = useState(false);
+  const [score, setScore] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<GameRound[]>([]);
+
+  const loadNext = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setRevealed(false);
+    setCorrect(false);
+    setGuess('');
+    try {
+      const p = await fetchRandomPhoto(lang);
+      setPhoto(p);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch photo');
+    } finally {
+      setLoading(false);
+    }
+  }, [lang]);
+
+  const changeLang = useCallback((newLang: string) => {
+    setLang(newLang);
+    setScore(0);
+    setTotal(0);
+    setHistory([]);
+  }, []);
+
+  const submitGuess = useCallback(() => {
+    if (!photo || revealed) return;
+    const isCorrect = checkGuess(guess, photo.title);
+    setCorrect(isCorrect);
+    setRevealed(true);
+    setTotal(t => t + 1);
+    if (isCorrect) setScore(s => s + 1);
+    setHistory(h => [
+      ...h,
+      { photo, userGuess: guess, revealed: true, correct: isCorrect },
+    ]);
+  }, [photo, guess, revealed]);
+
+  const skip = useCallback(() => {
+    if (!photo || revealed) return;
+    setRevealed(true);
+    setTotal(t => t + 1);
+    setHistory(h => [
+      ...h,
+      { photo, userGuess: '(skipped)', revealed: true, correct: false },
+    ]);
+  }, [photo, revealed]);
+
+  return {
+    lang, changeLang,
+    photo, guess, setGuess, revealed, correct,
+    score, total, loading, error, history,
+    loadNext, submitGuess, skip,
+  };
+}
