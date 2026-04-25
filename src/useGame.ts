@@ -45,15 +45,17 @@ export function useGame() {
     setRevealed(false);
     setCorrect(false);
     setGuess('');
+    const seenIds = new Set(history.map(r => r.photo.id));
+    if (photo) seenIds.add(photo.id);
     try {
-      const p = await fetchRandomPhoto(source, lang);
+      const p = await fetchRandomPhoto(source, lang, seenIds);
       setPhoto(p);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch photo');
     } finally {
       setLoading(false);
     }
-  }, [source, lang]);
+  }, [source, lang, history, photo]);
 
   const changeSource = useCallback((s: Source) => {
     setSource(s);

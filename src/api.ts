@@ -28,16 +28,21 @@ export const LANGUAGES: LangOption[] = [
   { code: 'zh', label: '中文', flag: '🇨🇳' },
 ];
 
-async function fetchWikipedia(lang: string): Promise<Photo> {
+async function fetchWikipedia(lang: string, excludeIds: Set<string>, retries = 5): Promise<Photo> {
   const url = `https://${lang}.wikipedia.org/api/rest_v1/page/random/summary`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Wikipedia API error: ${res.status}`);
 
   const data: WikipediaResponse = await res.json();
-  if (!data.thumbnail?.source) return fetchWikipedia(lang);
+  if (!data.thumbnail?.source) return fetchWikipedia(lang, excludeIds, retries);
+
+  const id = `wiki-${data.pageid}`;
+  if (excludeIds.has(id) && retries > 0) {
+    return fetchWikipedia(lang, excludeIds, retries - 1);
+  }
 
   return {
-    id: `wiki-${data.pageid}`,
+    id,
     imageUrl: data.thumbnail.source,
     title: data.title,
     description: data.extract,
@@ -62,7 +67,7 @@ interface UnsplashResponse {
 
 const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined;
 
-async function fetchUnsplash(): Promise<Photo> {
+async function fetchUnsplash(excludeIds: Set<string>, retries = 5): Promise<Photo> {
   if (!UNSPLASH_ACCESS_KEY) {
     throw new Error('Unsplash API key not set. Add VITE_UNSPLASH_ACCESS_KEY to .env');
   }
@@ -74,11 +79,17 @@ async function fetchUnsplash(): Promise<Photo> {
   if (!res.ok) throw new Error(`Unsplash API error: ${res.status}`);
 
   const [data]: [UnsplashResponse] = await res.json();
+  const id = `unsplash-${data.id}`;
+
+  if (excludeIds.has(id) && retries > 0) {
+    return fetchUnsplash(excludeIds, retries - 1);
+  }
+
   const tags = (data.tags ?? []).map(t => t.title.toLowerCase());
   const title = data.alt_description ?? data.description ?? tags[0] ?? 'Unknown';
 
   return {
-    id: `unsplash-${data.id}`,
+    id,
     imageUrl: data.urls.regular,
     title,
     description: data.description ?? data.alt_description ?? '',
@@ -102,7 +113,7 @@ export const SOURCES: SourceOption[] = [
   { id: 'unsplash', label: 'Unsplash', icon: 'camera' },
 ];
 
-export async function fetchRandomPhoto(source: Source, lang: string): Promise<Photo> {
-  if (source === 'unsplash') return fetchUnsplash();
-  return fetchWikipedia(lang);
+export async function fetchRandomPhoto(source: Source, lang: string, excludeIds: Set<string>): Promise<Photo> {
+  if (source === 'unsplash') return fetchUnsplash(excludeIds);
+  return fetchWikipedia(lang, excludeIds);
 }
