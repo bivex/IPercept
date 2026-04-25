@@ -76,7 +76,10 @@ async function fetchUnsplash(excludeIds: Set<string>, retries = 5): Promise<Phot
   const res = await fetch(url, {
     headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },
   });
-  if (!res.ok) throw new Error(`Unsplash API error: ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 403) throw new Error('Unsplash rate limit exceeded (50/hour on free tier). Wait a moment or switch to Wikipedia.');
+    throw new Error(`Unsplash API error: ${res.status}`);
+  }
 
   const [data]: [UnsplashResponse] = await res.json();
   const id = `unsplash-${data.id}`;
