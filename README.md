@@ -1,73 +1,51 @@
-# React + TypeScript + Vite
+# IPercept
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A photo guessing game. Random Wikipedia images are shown — type what you think it is.
 
-Currently, two official plugins are available:
+## How it works
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. A random Wikipedia article with an image is fetched
+2. You see the image and type your guess
+3. The answer is revealed — see if you were right
+4. Your score is tracked across rounds
 
-## React Compiler
+Guessing uses word overlap matching: if half or more words from the answer appear in your guess, it counts as correct.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Languages
 
-## Expanding the ESLint configuration
+Pick a Wikipedia language edition from the dropdown. Score resets on language change.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+English, Українська, Русский, Deutsch, Français, Español, Italiano, Polski, 日本語, 中文
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Tech stack
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- React 19 + TypeScript
+- Vite 6
+- Semantic UI CSS
+- Wikipedia REST API (`/api/rest_v1/page/random/summary`)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Run
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open http://localhost:5173/
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Build
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
+```
+
+## Project structure
+
+```
+src/
+  main.tsx     — entry point, Semantic UI CSS import
+  App.tsx      — UI layout (Semantic UI components)
+  api.ts       — Wikipedia API client + language list
+  useGame.ts   — game state hook (fetch, guess, score, skip)
+  types.ts     — Photo, GameRound, GameState types
 ```
